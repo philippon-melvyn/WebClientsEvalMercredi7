@@ -1,0 +1,820 @@
+---
+import { getClients } from "../lib/db.js";
+
+const clients = getClients();
+
+const clientCount = clients.length;
+
+const emailsCount = clients.filter(
+  (client) => client.email
+).length;
+
+const locationsCount = clients.filter(
+  (client) =>
+    Number.isFinite(Number(client.latitude)) &&
+    Number.isFinite(Number(client.longitude))
+).length;
+---
+
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>Les Clients | Dashboard</title>
+
+  <!-- Leaflet -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    crossorigin=""
+  />
+
+  <style>
+    :root {
+      --background: #f5f7fb;
+      --card: #ffffff;
+      --text: #172033;
+      --muted: #718096;
+      --border: #e7ebf2;
+      --primary: #4f46e5;
+      --primary-light: #eef2ff;
+      --success: #16a34a;
+      --shadow: 0 8px 30px rgba(15, 23, 42, 0.07);
+      --radius: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--background);
+      color: var(--text);
+      font-family:
+        Inter,
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    /* =========================
+       HEADER
+       ========================= */
+
+    .topbar {
+      height: 72px;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      padding: 0 32px;
+
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+
+      display: grid;
+      place-items: center;
+
+      background: var(--primary);
+      color: white;
+
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .brand-title {
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .brand-subtitle {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+
+    .user-area {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .user-info {
+      text-align: right;
+    }
+
+    .user-name {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .user-email {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .logout {
+      padding: 9px 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: white;
+
+      font-size: 13px;
+      font-weight: 600;
+
+      transition: 0.2s;
+    }
+
+    .logout:hover {
+      background: #f8fafc;
+      border-color: #d5dae3;
+    }
+
+    /* =========================
+       MAIN
+       ========================= */
+
+    main {
+      max-width: 1500px;
+      margin: auto;
+      padding: 32px;
+    }
+
+    .welcome {
+      margin-bottom: 25px;
+    }
+
+    .welcome h1 {
+      margin: 0;
+      font-size: 28px;
+      letter-spacing: -0.5px;
+    }
+
+    .welcome p {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    /* =========================
+       STATISTICS
+       ========================= */
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      margin-bottom: 22px;
+    }
+
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+
+      padding: 20px;
+
+      box-shadow: var(--shadow);
+
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .stat-icon {
+      width: 48px;
+      height: 48px;
+
+      border-radius: 14px;
+
+      display: grid;
+      place-items: center;
+
+      background: var(--primary-light);
+      color: var(--primary);
+
+      font-size: 21px;
+    }
+
+    .stat-value {
+      font-size: 25px;
+      font-weight: 750;
+    }
+
+    .stat-label {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    /* =========================
+       MAP
+       ========================= */
+
+    .map-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+
+      box-shadow: var(--shadow);
+
+      overflow: hidden;
+      margin-bottom: 22px;
+    }
+
+    .card-header {
+      padding: 18px 22px;
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      border-bottom: 1px solid var(--border);
+    }
+
+    .card-title {
+      font-weight: 700;
+      font-size: 16px;
+    }
+
+    .card-description {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 3px;
+    }
+
+    .map-status {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+
+      color: var(--success);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+    }
+
+    #map {
+      width: 100%;
+      height: 560px;
+    }
+
+    /* =========================
+       CLIENT TABLE
+       ========================= */
+
+    .clients-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+
+      box-shadow: var(--shadow);
+
+      overflow: hidden;
+    }
+
+    .clients-header {
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .clients-table-wrapper {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th {
+      padding: 13px 22px;
+
+      background: #fafbfc;
+
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+
+      text-align: left;
+    }
+
+    td {
+      padding: 15px 22px;
+      border-top: 1px solid var(--border);
+
+      font-size: 13px;
+    }
+
+    tbody tr {
+      transition: background 0.15s;
+    }
+
+    tbody tr:hover {
+      background: #fafbff;
+    }
+
+    .client-name {
+      font-weight: 650;
+    }
+
+    .client-email {
+      color: var(--muted);
+    }
+
+    .coordinates {
+      font-family: monospace;
+      color: #64748b;
+      font-size: 12px;
+    }
+
+    .location-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+
+      padding: 5px 9px;
+
+      background: #f0fdf4;
+      color: #15803d;
+
+      border-radius: 7px;
+
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    /* =========================
+       LEAFLET
+       ========================= */
+
+    .leaflet-container {
+      font-family: inherit;
+    }
+
+    .leaflet-popup-content-wrapper {
+      border-radius: 12px;
+    }
+
+    .leaflet-popup-content {
+      margin: 14px 16px;
+    }
+
+    .popup-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+
+    .popup-address {
+      color: #64748b;
+      font-size: 12px;
+      margin-bottom: 3px;
+    }
+
+    .popup-email {
+      color: #4f46e5;
+      font-size: 12px;
+    }
+
+    /* =========================
+       MOBILE
+       ========================= */
+
+    @media (max-width: 800px) {
+      .topbar {
+        padding: 0 16px;
+      }
+
+      .user-info {
+        display: none;
+      }
+
+      main {
+        padding: 20px 14px;
+      }
+
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .welcome h1 {
+        font-size: 24px;
+      }
+
+      #map {
+        height: 450px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- HEADER -->
+  <header class="topbar">
+
+    <div class="brand">
+      <div class="brand-icon">
+        📍
+      </div>
+
+      <div>
+        <div class="brand-title">
+          Clients
+        </div>
+
+        <div class="brand-subtitle">
+          Gestion géographique
+        </div>
+      </div>
+    </div>
+
+  </header>
+  <main>
+
+    <!-- INTRODUCTION -->
+
+    <section class="welcome">
+
+      <h1>
+        Tableau de bord
+      </h1>
+
+      <p>
+        Visualisez vos clients et leur localisation géographique.
+      </p>
+
+    </section>
+
+
+    <!-- STATISTIQUES -->
+
+    <section class="stats">
+
+      <div class="stat-card">
+
+        <div class="stat-icon">
+          👥
+        </div>
+
+        <div>
+          <div class="stat-value">
+            {clientCount}
+          </div>
+
+          <div class="stat-label">
+            Clients
+          </div>
+        </div>
+
+      </div>
+
+
+      <div class="stat-card">
+
+        <div class="stat-icon">
+          📍
+        </div>
+
+        <div>
+          <div class="stat-value">
+            {locationsCount}
+          </div>
+
+          <div class="stat-label">
+            Localisations
+          </div>
+        </div>
+
+      </div>
+
+
+      <div class="stat-card">
+
+        <div class="stat-icon">
+          ✉️
+        </div>
+
+        <div>
+          <div class="stat-value">
+            {emailsCount}
+          </div>
+
+          <div class="stat-label">
+            Contacts avec email
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- MAP -->
+
+    <section class="map-card">
+
+      <div class="card-header">
+
+        <div>
+
+          <div class="card-title">
+            Carte des clients
+          </div>
+
+          <div class="card-description">
+            Cliquez sur un marqueur pour afficher les informations du client.
+          </div>
+
+        </div>
+
+        <div class="map-status">
+          <span class="status-dot"></span>
+          Carte active
+        </div>
+
+      </div>
+
+      <div id="map"></div>
+
+    </section>
+
+
+    <!-- CLIENTS -->
+
+    <section class="clients-card">
+
+      <div class="clients-header">
+
+        <div class="card-title">
+          Liste des clients
+        </div>
+
+        <div class="card-description">
+          Données provenant de SQLite
+        </div>
+
+      </div>
+
+
+      <div class="clients-table-wrapper">
+
+        <table>
+
+          <thead>
+
+            <tr>
+              <th>Client</th>
+              <th>Email</th>
+              <th>Adresse</th>
+              <th>Coordonnées</th>
+              <th>Position</th>
+            </tr>
+
+          </thead>
+
+          <tbody>
+
+            {clients.map((client) => (
+
+              <tr>
+
+                <td>
+                  <div class="client-name">
+                    {client.name}
+                  </div>
+                </td>
+
+                <td>
+                  <div class="client-email">
+                    {client.email ?? "—"}
+                  </div>
+                </td>
+
+                <td>
+                  {client.address ?? "—"}
+                </td>
+
+                <td>
+
+                  <span class="coordinates">
+                    {Number(client.latitude).toFixed(5)},
+                    {Number(client.longitude).toFixed(5)}
+                  </span>
+
+                </td>
+
+                <td>
+
+                  <span class="location-badge">
+                    ● Localisé
+                  </span>
+
+                </td>
+
+              </tr>
+
+            ))}
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </section>
+
+  </main>
+
+
+  <!-- LEAFLET -->
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    crossorigin=""
+  ></script>
+
+
+  <script define:vars={{ clients }}>
+
+    /*
+     * Création de la carte.
+     *
+     * On ne fixe volontairement PAS un zoom élevé.
+     * fitBounds() déterminera automatiquement le niveau
+     * de zoom nécessaire pour afficher tous les clients.
+     */
+
+    const map = L.map("map", {
+      zoomControl: true,
+      scrollWheelZoom: true
+    });
+
+
+    /*
+     * Fond OpenStreetMap
+     */
+
+    L.tileLayer(
+      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap contributors"
+      }
+    ).addTo(map);
+
+
+    /*
+     * Tableau des coordonnées.
+     */
+
+    const bounds = [];
+
+
+    /*
+     * Création des marqueurs.
+     */
+
+    clients.forEach((client) => {
+
+      const latitude = Number(client.latitude);
+      const longitude = Number(client.longitude);
+
+
+      if (
+        !Number.isFinite(latitude) ||
+        !Number.isFinite(longitude)
+      ) {
+        return;
+      }
+
+
+      const position = [
+        latitude,
+        longitude
+      ];
+
+
+      bounds.push(position);
+
+
+      const popup = `
+        <div class="popup-title">
+          ${escapeHtml(client.name)}
+        </div>
+
+        <div class="popup-address">
+          📍 ${escapeHtml(client.address ?? "")}
+        </div>
+
+        <div class="popup-email">
+          ✉ ${escapeHtml(client.email ?? "")}
+        </div>
+      `;
+
+
+      L.marker(position)
+        .addTo(map)
+        .bindPopup(popup);
+
+    });
+
+
+    /*
+     * Ajustement automatique de la carte.
+     *
+     * padding ajoute une marge autour des marqueurs.
+     */
+
+    if (bounds.length === 1) {
+
+      map.setView(
+        bounds[0],
+        12
+      );
+
+    } else if (bounds.length > 1) {
+
+      map.fitBounds(
+        bounds,
+        {
+          padding: [50, 50],
+          maxZoom: 12
+        }
+      );
+
+    } else {
+
+      /*
+       * Aucun client géolocalisé :
+       * affichage par défaut sur la France.
+       */
+
+      map.setView(
+        [46.6, 2.5],
+        6
+      );
+
+    }
+
+
+    /*
+     * Protection minimale contre l'injection HTML
+     * dans les informations des clients.
+     */
+
+    function escapeHtml(value) {
+
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+    }
+
+  </script>
+
+</body>
+</html>

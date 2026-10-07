@@ -1,0 +1,19 @@
+{
+  "name": "astro-clients-ssr",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "start": "bun ./dist/server/entry.mjs",
+    "db:init": "bun scripts/init-db.mjs",
+    "db:seed": "bun scripts/seed-db.mjs"
+  },
+  "dependencies": {
+    "@astrojs/node": "^11.1.5",
+    "astro": "^7.3.1",
+    "leaflet": "^1.9.4"
+  }
+}
