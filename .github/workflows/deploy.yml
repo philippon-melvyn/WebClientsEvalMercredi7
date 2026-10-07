@@ -35,8 +35,8 @@ jobs:
             bun ci
             bun run --bun build
 
-            sudo systemctl restart clients
-            sudo systemctl status clients --no-pager
+            sudo -n /bin/systemctl restart clients
+            sudo -n /bin/systemctl status clients
 
             curl --fail --retry 5 --retry-connrefused --retry-delay 2 http://localhost:3344/
 
