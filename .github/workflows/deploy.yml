@@ -1,0 +1,44 @@
+name: Deploy WebClients
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-webclients
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Déployer sur le VPS
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+
+          script: |
+            set -e
+
+            export BUN_INSTALL="$HOME/.bun"
+            export PATH="$BUN_INSTALL/bin:$PATH"
+
+            cd /var/www/clients/WebClientsEvalMercredi7
+
+            git pull --ff-only origin main
+            bun ci
+            bun run --bun build
+
+            sudo systemctl restart clients
+            sudo systemctl status clients --no-pager
+
+            curl --fail --retry 5 --retry-connrefused --retry-delay 2 http://localhost:3344/
+
+
+
