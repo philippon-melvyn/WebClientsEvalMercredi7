@@ -33,12 +33,13 @@ jobs:
 
             git pull --ff-only origin main
             bun ci
+            bun run db:auth
             bun run --bun build
 
             sudo -n /bin/systemctl restart clients
             sudo -n /bin/systemctl status clients
 
-            curl --fail --retry 5 --retry-connrefused --retry-delay 2 http://localhost:3344/
+            curl --fail --retry 5 --retry-connrefused --retry-delay 2 http://localhost:3344/login
 
 
 

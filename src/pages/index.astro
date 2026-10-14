@@ -1,5 +1,13 @@
 ---
 import { getClients } from "../lib/db.js";
+import { auth, googleEnabled, githubEnabled } from "../lib/auth";
+const user = Astro.locals.user;
+const accounts = user && (googleEnabled || githubEnabled)
+  ? await auth.api.listUserAccounts({ headers: Astro.request.headers })
+  : [];
+const canLinkGoogle = googleEnabled && !accounts.some((account) => account.providerId === "google");
+const canLinkGithub = githubEnabled && !accounts.some((account) => account.providerId === "github");
+const accountLinkError = Astro.url.searchParams.has("accountLinkError");
 
 const clients = getClients();
 
@@ -160,6 +168,21 @@ const locationsCount = clients.filter(
       background: #f8fafc;
       border-color: #d5dae3;
     }
+
+    .account-links {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 22px;
+    }
+
+    .account-links h2 { font-size: 16px; margin: 0 0 8px; }
+    .account-links p { color: var(--muted); font-size: 14px; line-height: 1.5; }
+    .account-links button { cursor: pointer; font: inherit; margin: 0 8px 8px 0; }
+    .account-links button:disabled { cursor: wait; opacity: .6; }
+    #account-link-error { color: #b91c1c; }
+    #account-link-error:empty { display: none; }
 
     /* =========================
        MAIN
@@ -469,6 +492,16 @@ const locationsCount = clients.filter(
       </div>
     </div>
 
+    {user && (
+      <div class="user-area">
+        <div class="user-info">
+          <div class="user-name">{user.name}</div>
+          <div class="user-email">{user.email}</div>
+        </div>
+        <button type="button" id="logout" class="logout">Déconnexion</button>
+        <span id="logout-error" role="alert"></span>
+      </div>
+    )}
   </header>
   <main>
 
@@ -486,6 +519,16 @@ const locationsCount = clients.filter(
 
     </section>
 
+
+    {(canLinkGoogle || canLinkGithub || accountLinkError) && (
+      <section class="account-links" aria-labelledby="account-links-title">
+        <h2 id="account-links-title">Modes de connexion</h2>
+        <p>Associez votre compte pour vous connecter ensuite avec Google ou GitHub. Utilisez la même adresse email : {user?.email}.</p>
+        {canLinkGoogle && <button type="button" class="logout" data-link-provider="google">Associer Google</button>}
+        {canLinkGithub && <button type="button" class="logout" data-link-provider="github">Associer GitHub</button>}
+        <p id="account-link-error" role="alert" aria-live="polite">{accountLinkError ? "Association impossible. Réessayez avec le compte du fournisseur qui utilise la même adresse email." : ""}</p>
+      </section>
+    )}
 
     <!-- STATISTIQUES -->
 
@@ -816,5 +859,50 @@ const locationsCount = clients.filter(
 
   </script>
 
+  <script>
+    import { authClient } from "../lib/auth-client";
+
+    const linkButtons = document.querySelectorAll<HTMLButtonElement>("[data-link-provider]");
+    let linking = false;
+    linkButtons.forEach((linkButton) => {
+      linkButton.addEventListener("click", async () => {
+        if (linking) return;
+        const provider = linkButton.dataset.linkProvider;
+        if (provider !== "google" && provider !== "github") return;
+        linking = true;
+        const error = document.querySelector<HTMLElement>("#account-link-error")!;
+        error.textContent = "";
+        linkButtons.forEach((item) => { item.disabled = true; });
+        try {
+          const result = await authClient.linkSocial({
+            provider,
+            callbackURL: "/",
+            errorCallbackURL: "/?accountLinkError=1",
+          });
+          if (result.error) throw new Error("linkSocial failed");
+        } catch {
+          error.textContent = "Impossible de démarrer l’association. Réessayez dans un instant.";
+        } finally {
+          linking = false;
+          linkButtons.forEach((item) => { item.disabled = false; });
+        }
+      });
+    });
+
+    const button = document.querySelector<HTMLButtonElement>("#logout");
+    button?.addEventListener("click", async () => {
+      button.disabled = true;
+      const error = document.querySelector<HTMLElement>("#logout-error")!;
+      error.textContent = "";
+      try {
+        const result = await authClient.signOut();
+        if (result.error) throw new Error("signOut failed");
+        window.location.href = "/login";
+      } catch {
+        error.textContent = "Déconnexion impossible. Réessayez.";
+        button.disabled = false;
+      }
+    });
+  </script>
 </body>
 </html>

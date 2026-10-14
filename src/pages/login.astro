@@ -1,0 +1,171 @@
+﻿---
+import { googleEnabled, githubEnabled } from "../lib/auth";
+export const prerender = false;
+if (Astro.locals.user) return Astro.redirect("/");
+---
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Connexion ou inscription | Clients</title>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="brand">📍 Clients</div>
+        <h1>Bienvenue sur votre espace clients</h1>
+        <p>Choisissez de vous connecter ou de créer un nouveau compte.</p>
+      </header>
+      <div class="cards">
+        <section class="card" aria-labelledby="login-title">
+          <div class="card-heading">
+            <span class="badge">Déjà un compte</span>
+            <h2 id="login-title">Se connecter</h2>
+            <p>Retrouvez votre tableau de bord et vos clients.</p>
+          </div>
+          <form id="login-form">
+            <label for="login-email">Email</label>
+            <input id="login-email" name="email" type="email" autocomplete="username" placeholder="vous@exemple.fr" required />
+            <label for="login-password">Mot de passe</label>
+            <input id="login-password" name="password" type="password" autocomplete="current-password" required />
+            <p id="login-error" class="error" role="alert" aria-live="polite"></p>
+            <button type="submit" id="login">Se connecter</button>
+          </form>
+          {(googleEnabled || githubEnabled) && (
+            <div class="social">
+              <div class="separator">ou continuer avec</div>
+              {googleEnabled && <button type="button" id="google" class="secondary">Google</button>}
+              {githubEnabled && <button type="button" id="github" class="secondary">GitHub</button>}
+              <p class="hint">Lors de votre première connexion, votre compte sera créé automatiquement.</p>
+            </div>
+          )}
+        </section>
+        <section class="card signup-card" aria-labelledby="signup-title">
+          <div class="card-heading">
+            <span class="badge">Première visite</span>
+            <h2 id="signup-title">Créer un compte</h2>
+            <p>Inscrivez-vous avec votre nom, votre email et un mot de passe.</p>
+          </div>
+          <form id="signup-form">
+            <label for="signup-name">Nom</label>
+            <input id="signup-name" name="name" autocomplete="name" placeholder="Votre nom" required />
+            <label for="signup-email">Email</label>
+            <input id="signup-email" name="email" type="email" autocomplete="username" placeholder="vous@exemple.fr" required />
+            <label for="signup-password">Mot de passe</label>
+            <input id="signup-password" name="password" type="password" autocomplete="new-password" minlength="8" required aria-describedby="password-help" />
+            <small id="password-help">8 caractères minimum.</small>
+            <label for="signup-confirm">Confirmer le mot de passe</label>
+            <input id="signup-confirm" name="passwordConfirmation" type="password" autocomplete="new-password" minlength="8" required />
+            <p id="signup-error" class="error" role="alert" aria-live="polite"></p>
+            <button type="submit" id="signup">Créer mon compte</button>
+          </form>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>
+<style>
+  :global(*) { box-sizing: border-box; }
+  :global(body) { margin: 0; background: #f5f7fb; color: #172033; font-family: system-ui, sans-serif; }
+  main { min-height: 100dvh; max-width: 1000px; margin: 0 auto; padding: 56px 24px; }
+  header { text-align: center; margin-bottom: 32px; }
+  .brand { color: #4f46e5; font-weight: 700; font-size: 20px; }
+  h1 { margin: 16px 0 10px; font-size: clamp(24px, 4vw, 32px); letter-spacing: -.5px; }
+  h2 { margin: 14px 0 8px; font-size: 25px; }
+  p { color: #64748b; margin: 0; line-height: 1.5; }
+  .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start; }
+  .card { padding: 32px; background: white; border: 1px solid #e7ebf2; border-radius: 18px; box-shadow: 0 8px 30px rgb(15 23 42 / 7%); }
+  .signup-card { border-top: 4px solid #4f46e5; padding-top: 29px; }
+  .card-heading { margin-bottom: 24px; }
+  .badge { display: inline-block; color: #4f46e5; background: #eef2ff; border-radius: 6px; padding: 5px 9px; font-size: 12px; font-weight: 600; }
+  form, .social { display: flex; flex-direction: column; gap: 12px; }
+  label { font-weight: 600; font-size: 14px; }
+  small { color: #64748b; font-size: 12px; }
+  input, button { width: 100%; font: inherit; padding: 12px 14px; border-radius: 10px; border: 1px solid #d5dae3; }
+  input:focus-visible, button:focus-visible { outline: 2px solid #4f46e5; outline-offset: 2px; }
+  button { background: #4f46e5; color: white; border-color: #4f46e5; cursor: pointer; font-weight: 600; margin-top: 4px; }
+  button:hover { background: #4338ca; }
+  button.secondary { color: #4f46e5; background: white; margin-top: 0; }
+  button.secondary:hover { background: #eef2ff; }
+  button:disabled { opacity: .6; cursor: wait; }
+  .social { margin-top: 22px; }
+  .separator { display: flex; align-items: center; gap: 12px; color: #64748b; font-size: 13px; }
+  .separator::before, .separator::after { content: ""; flex: 1; height: 1px; background: #e7ebf2; }
+  .hint { font-size: 12px; text-align: center; }
+  .error { color: #b91c1c; margin: 0; font-size: 14px; }
+  .error:empty { display: none; }
+  @media (max-width: 700px) {
+    main { padding: 32px 16px; }
+    .cards { grid-template-columns: 1fr; }
+    .card { padding: 24px; }
+    .signup-card { padding-top: 21px; }
+  }
+</style>
+<script>
+  import { authClient } from "../lib/auth-client";
+  const loginForm = document.querySelector<HTMLFormElement>("#login-form")!;
+  const signupForm = document.querySelector<HTMLFormElement>("#signup-form")!;
+  const loginError = document.querySelector<HTMLParagraphElement>("#login-error")!;
+  const signupError = document.querySelector<HTMLParagraphElement>("#signup-error")!;
+  const buttons = document.querySelectorAll<HTMLButtonElement>("button");
+  let pending = false;
+  function setPending(value: boolean) {
+    pending = value;
+    buttons.forEach((button) => { button.disabled = value; });
+  }
+  const oauthErrors: Record<string, string> = {
+    access_denied: "Connexion annulée. Vous pouvez réessayer.",
+    state_mismatch: "La tentative de connexion a expiré. Réessayez.",
+    invalid_state: "La tentative de connexion a expiré. Réessayez.",
+    account_not_linked: "Un compte existe déjà avec cet email. Connectez-vous avec votre mot de passe, puis associez Google ou GitHub dans le tableau de bord.",
+    email_does_not_match: "Utilisez le compte du fournisseur qui correspond à votre email sur ce site.",
+  };
+  const oauthError = new URLSearchParams(window.location.search).get("error");
+  if (oauthError) loginError.textContent = oauthErrors[oauthError] ?? "La connexion avec ce fournisseur a échoué. Réessayez.";
+  async function signInSocial(provider: "google" | "github") {
+    if (pending) return;
+    setPending(true);
+    loginError.textContent = "";
+    try {
+      const result = await authClient.signIn.social({ provider, callbackURL: "/", errorCallbackURL: "/login" });
+      if (result.error) loginError.textContent = "Impossible de démarrer la connexion. Réessayez dans un instant.";
+    } catch {
+      loginError.textContent = "Impossible de joindre le serveur. Réessayez dans un instant.";
+    } finally { setPending(false); }
+  }
+  async function submit(mode: "login" | "signup") {
+    const form = mode === "login" ? loginForm : signupForm;
+    const error = mode === "login" ? loginError : signupError;
+    if (pending || !form.reportValidity()) return;
+    error.textContent = "";
+    const data = new FormData(form);
+    const email = String(data.get("email")).trim();
+    const password = String(data.get("password"));
+    const name = String(data.get("name") || "").trim();
+    if (mode === "signup") {
+      if (!name) { signupError.textContent = "Veuillez renseigner votre nom."; return; }
+      if (password !== data.get("passwordConfirmation")) {
+        signupError.textContent = "Les deux mots de passe doivent être identiques.";
+        return;
+      }
+    }
+    setPending(true);
+    try {
+      const result = mode === "login"
+        ? await authClient.signIn.email({ email, password })
+        : await authClient.signUp.email({ name, email, password });
+      if (result.error) {
+        error.textContent = mode === "login"
+          ? "Connexion impossible. Vérifiez votre email et votre mot de passe."
+          : "Création du compte impossible. Vérifiez vos informations. Si vous avez déjà un compte, utilisez la carte « Se connecter ».";
+      } else { window.location.href = "/"; }
+    } catch {
+      error.textContent = "Impossible de joindre le serveur. Réessayez dans un instant.";
+    } finally { setPending(false); }
+  }
+  loginForm.addEventListener("submit", (event) => { event.preventDefault(); void submit("login"); });
+  signupForm.addEventListener("submit", (event) => { event.preventDefault(); void submit("signup"); });
+  document.querySelector("#google")?.addEventListener("click", () => { void signInSocial("google"); });
+  document.querySelector("#github")?.addEventListener("click", () => { void signInSocial("github"); });
+</script>
